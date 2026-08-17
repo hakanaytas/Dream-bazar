@@ -1,0 +1,404 @@
+/* ==========================================================================
+   RÜYA PAZARI — Tasarım Sistemi
+   Palet: gece indigosu + antika altın + mücevher tonları (nadirlik renkleri)
+   Tipografi: Cormorant Garamond (başlık) / Manrope (gövde) / Space Mono (rakam)
+   İmza öğesi: "Değer Perdesi" — balmumu mühür, eşya değerini oyun sonuna
+   kadar gizleyen ve final sahnesinde çatlayarak açılan tekrarlayan motif.
+   ========================================================================== */
+
+:root {
+  --void: #0a0c17;
+  --bg: #0b0e1a;
+  --panel: #161a30;
+  --panel-alt: #1e2340;
+  --panel-line: rgba(212, 162, 76, 0.16);
+  --ink: #f3efe6;
+  --ink-dim: #b7b2c9;
+  --ink-faint: #6d6a84;
+
+  --gold: #d4a24c;
+  --gold-light: #e8c77a;
+  --gold-deep: #a9762f;
+  --violet: #8b5cf0;
+  --violet-light: #b79bff;
+  --ruby: #e4432c;
+  --emerald: #34c77b;
+  --sapphire: #4c8fd4;
+
+  --rarity-common: #8b93a8;
+  --rarity-uncommon: #34c77b;
+  --rarity-rare: #4c8fd4;
+  --rarity-epic: #a24cd4;
+  --rarity-legendary: linear-gradient(135deg, #e8c77a, #e4432c);
+
+  --font-display: "Cormorant Garamond", "Times New Roman", serif;
+  --font-body: "Manrope", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --font-mono: "Space Mono", ui-monospace, monospace;
+
+  --radius-s: 10px;
+  --radius-m: 16px;
+  --radius-l: 24px;
+  --shadow-lamp: 0 0 40px rgba(212, 162, 76, 0.18);
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+* { box-sizing: border-box; }
+html, body { height: 100%; }
+body {
+  margin: 0;
+  background: radial-gradient(ellipse at 50% -10%, #1a1f3d 0%, var(--bg) 55%, var(--void) 100%);
+  color: var(--ink);
+  font-family: var(--font-body);
+  overflow: hidden;
+  -webkit-font-smoothing: antialiased;
+  -webkit-tap-highlight-color: transparent;
+  user-select: none;
+}
+input, textarea { user-select: text; }
+
+button { font-family: inherit; color: inherit; }
+input { font-family: inherit; }
+
+:focus-visible {
+  outline: 2px solid var(--gold-light);
+  outline-offset: 2px;
+}
+
+/* ---------- Ambient katman: yükselen altın toz zerrecikleri ---------- */
+#ambient {
+  position: fixed; inset: 0; z-index: 0; pointer-events: none; overflow: hidden;
+}
+.motes { position: absolute; inset: 0; }
+.motes::before, .motes::after {
+  content: ""; position: absolute; inset: 0;
+  background-image:
+    radial-gradient(2px 2px at 10% 20%, rgba(232,199,122,.55), transparent 60%),
+    radial-gradient(1.5px 1.5px at 80% 40%, rgba(232,199,122,.4), transparent 60%),
+    radial-gradient(1.5px 1.5px at 60% 80%, rgba(139,92,240,.35), transparent 60%),
+    radial-gradient(2px 2px at 30% 70%, rgba(232,199,122,.3), transparent 60%),
+    radial-gradient(1px 1px at 45% 15%, rgba(232,199,122,.5), transparent 60%),
+    radial-gradient(1.5px 1.5px at 90% 85%, rgba(139,92,240,.3), transparent 60%);
+  animation: drift 22s linear infinite;
+}
+.motes::after { animation-duration: 34s; animation-direction: reverse; opacity: .6; }
+@keyframes drift {
+  from { transform: translateY(10%); }
+  to { transform: translateY(-60%); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .motes::before, .motes::after { animation: none; }
+}
+
+/* ---------- Ekran sistemi ---------- */
+#app { position: relative; z-index: 1; height: 100dvh; }
+.screen {
+  display: none;
+  height: 100%;
+  padding: calc(20px + var(--safe-top)) 20px calc(20px + var(--safe-bottom));
+  flex-direction: column;
+  overflow-y: auto;
+}
+.screen.active { display: flex; animation: screen-in .38s cubic-bezier(.2,.8,.2,1); }
+@keyframes screen-in { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) { .screen.active { animation: none; } }
+
+.panel-narrow { max-width: 480px; width: 100%; margin: 0 auto; display: flex; flex-direction: column; flex: 1; }
+
+/* ---------- Yükleniyor ---------- */
+#screen-loading { align-items: center; justify-content: center; gap: 24px; }
+.lamp-emblem { width: 120px; height: 120px; filter: drop-shadow(var(--shadow-lamp)); }
+.lamp-svg { width: 100%; height: 100%; }
+.lamp-ring { fill: none; stroke: var(--gold); stroke-opacity: .5; }
+.lamp-ring-outer { stroke-width: 1.2; animation: spin 12s linear infinite; }
+.lamp-ring-inner { stroke-width: 1; stroke-dasharray: 4 6; animation: spin-rev 9s linear infinite; }
+.lamp-mark { fill: var(--gold-light); animation: pulse-glow 2.4s ease-in-out infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+@keyframes spin-rev { to { transform: rotate(-360deg); } }
+@keyframes pulse-glow { 0%,100% { opacity: .75; } 50% { opacity: 1; filter: drop-shadow(0 0 10px var(--gold-light)); } }
+.loading-label { font-family: var(--font-display); font-style: italic; color: var(--ink-dim); font-size: 1.1rem; letter-spacing: .02em; }
+
+/* ---------- Tipografi ---------- */
+.brand-title {
+  font-family: var(--font-display); font-weight: 700; font-size: clamp(2.6rem, 10vw, 3.4rem);
+  letter-spacing: .01em; margin: 8px 0 2px; text-align: center;
+  background: linear-gradient(180deg, var(--gold-light), var(--gold));
+  -webkit-background-clip: text; background-clip: text; color: transparent;
+}
+.brand-tagline { text-align: center; color: var(--ink-dim); font-family: var(--font-display); font-style: italic; font-size: 1.15rem; margin: 0 0 32px; }
+.section-title { font-family: var(--font-display); font-weight: 600; font-size: 1.6rem; margin: 4px 0 18px; }
+.field-label { font-size: .78rem; text-transform: uppercase; letter-spacing: .1em; color: var(--gold-light); margin: 18px 0 8px; font-weight: 700; }
+.microcopy { color: var(--ink-faint); font-size: .8rem; text-align: center; margin-top: 14px; }
+.field-error { color: var(--ruby); font-size: .85rem; margin-top: 10px; }
+.empty-hint { color: var(--ink-faint); text-align: center; padding: 40px 20px; font-size: .92rem; }
+
+/* ---------- Girdiler ---------- */
+.text-input {
+  background: var(--panel); border: 1px solid var(--panel-line); color: var(--ink);
+  border-radius: var(--radius-m); padding: 14px 16px; font-size: 1.05rem; width: 100%;
+  transition: border-color .2s, box-shadow .2s;
+}
+.text-input:focus { border-color: var(--gold); box-shadow: 0 0 0 3px rgba(212,162,76,.15); }
+.code-input { text-align: center; letter-spacing: .4em; font-family: var(--font-mono); font-size: 1.5rem; text-transform: uppercase; }
+
+/* ---------- Butonlar ---------- */
+.btn {
+  border: none; border-radius: var(--radius-m); padding: 15px 20px; font-weight: 700;
+  font-size: 1rem; cursor: pointer; display: inline-flex; align-items: center; justify-content: center;
+  gap: 10px; transition: transform .12s ease, filter .2s ease, box-shadow .2s ease; letter-spacing: .01em;
+}
+.btn:active { transform: scale(.97); }
+.btn:disabled { opacity: .4; cursor: not-allowed; }
+.btn-block { width: 100%; margin-top: 12px; }
+.btn-large { padding: 18px 22px; font-size: 1.08rem; }
+.btn-icon { font-size: 1.2rem; }
+.btn-primary { background: linear-gradient(135deg, var(--violet-light), var(--violet)); color: #fff; box-shadow: 0 8px 24px rgba(139,92,240,.35); }
+.btn-primary:hover { filter: brightness(1.08); }
+.btn-gold { background: linear-gradient(135deg, var(--gold-light), var(--gold)); color: #241505; box-shadow: 0 8px 24px rgba(212,162,76,.35); }
+.btn-secondary { background: var(--panel-alt); border: 1px solid var(--panel-line); color: var(--ink); }
+.btn-ghost { background: transparent; border: 1px solid var(--panel-line); color: var(--ink-dim); }
+.btn-back { align-self: flex-start; background: none; border: none; color: var(--ink-dim); font-size: .95rem; padding: 8px 0 4px; cursor: pointer; }
+.icon-btn {
+  position: relative; background: var(--panel-alt); border: 1px solid var(--panel-line); color: var(--ink);
+  width: 42px; height: 42px; border-radius: 12px; font-size: 1.1rem; cursor: pointer; display: flex; align-items: center; justify-content: center;
+}
+
+/* ---------- Avatar seçici ---------- */
+.avatar-grid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 8px; }
+.avatar-opt {
+  aspect-ratio: 1; border-radius: 14px; background: var(--panel); border: 2px solid transparent;
+  font-size: 1.5rem; display: flex; align-items: center; justify-content: center; cursor: pointer;
+  transition: border-color .15s, transform .15s, background .15s;
+}
+.avatar-opt.selected { border-color: var(--gold); background: var(--panel-alt); transform: scale(1.06); }
+
+/* ---------- Ana menü ---------- */
+.home-header { display: flex; justify-content: flex-end; margin-bottom: 8px; }
+.player-chip { display: flex; align-items: center; gap: 8px; background: var(--panel); border: 1px solid var(--panel-line); padding: 6px 14px 6px 8px; border-radius: 999px; font-size: .9rem; }
+.player-chip .chip-avatar { font-size: 1.2rem; }
+
+/* ---------- Oda oluşturma boyutu ---------- */
+.size-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 8px; }
+.size-option {
+  background: var(--panel); border: 2px solid var(--panel-line); border-radius: var(--radius-m);
+  padding: 18px 0; font-family: var(--font-display); font-size: 1.6rem; font-weight: 700; color: var(--ink);
+  cursor: pointer;
+}
+.size-option.selected { border-color: var(--gold); background: var(--panel-alt); color: var(--gold-light); }
+
+/* ---------- Lobi ---------- */
+.lobby-layout { display: flex; flex-direction: column; flex: 1; max-width: 560px; margin: 0 auto; width: 100%; min-height: 0; }
+.lobby-header { display: flex; justify-content: space-between; align-items: center; }
+.room-code-badge { display: flex; flex-direction: column; align-items: flex-end; }
+.room-code-label { font-size: .68rem; text-transform: uppercase; letter-spacing: .1em; color: var(--ink-faint); }
+.room-code-value {
+  font-family: var(--font-mono); font-size: 1.3rem; letter-spacing: .25em; background: none; border: none;
+  color: var(--gold-light); cursor: pointer; padding: 2px 0;
+}
+.lobby-countdown-wrap { display: flex; flex-direction: column; align-items: center; gap: 8px; margin: 18px 0; }
+.countdown-ring { position: relative; width: 84px; height: 84px; }
+.countdown-ring svg { width: 100%; height: 100%; transform: rotate(-90deg); }
+.countdown-ring circle { fill: none; stroke: var(--panel-alt); stroke-width: 5; }
+.countdown-ring circle:nth-child(1) { }
+#countdown-ring svg circle {
+  stroke: var(--gold);
+  stroke-linecap: round;
+  stroke-dasharray: 213.6;
+  stroke-dashoffset: 0;
+  transition: stroke-dashoffset 1s linear;
+}
+#countdown-text {
+  position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+  font-family: var(--font-mono); font-size: 1.3rem; color: var(--gold-light);
+}
+.lobby-status { color: var(--ink-dim); font-size: .92rem; }
+.lobby-players { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 10px; overflow-y: auto; padding: 4px 2px; flex: 1; min-height: 80px; }
+.lobby-actions { display: flex; flex-direction: column; }
+.lobby-chat { margin-top: 14px; background: var(--panel); border: 1px solid var(--panel-line); border-radius: var(--radius-m); display: flex; flex-direction: column; height: 160px; overflow: hidden; }
+
+/* ---------- Oyuncu kartları ---------- */
+.player-card {
+  background: var(--panel); border: 1px solid var(--panel-line); border-radius: var(--radius-m);
+  padding: 12px; display: flex; flex-direction: column; align-items: center; gap: 6px; text-align: center;
+  position: relative;
+}
+.player-card.is-host::before { content: "HOST"; position: absolute; top: 6px; left: 8px; font-size: .6rem; letter-spacing: .1em; color: var(--gold); }
+.player-card .p-avatar { font-size: 1.8rem; }
+.player-card .p-name { font-weight: 700; font-size: .92rem; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.player-card .p-status { font-size: .74rem; padding: 3px 10px; border-radius: 999px; }
+.p-status.ready { background: rgba(52,199,123,.15); color: var(--emerald); }
+.p-status.waiting { background: rgba(183,178,201,.12); color: var(--ink-faint); }
+
+.player-row { display: flex; align-items: center; gap: 12px; padding: 10px 12px; background: var(--panel); border-radius: var(--radius-s); border: 1px solid var(--panel-line); margin-bottom: 8px; }
+.player-avatar { font-size: 1.4rem; }
+.player-row-main { display: flex; flex-direction: column; flex: 1; min-width: 0; }
+.player-row-name { font-weight: 700; font-size: .95rem; }
+.player-row-meta { font-size: .78rem; color: var(--ink-faint); font-family: var(--font-mono); }
+.player-row-status { font-size: .8rem; color: var(--gold-light); }
+
+/* ---------- Sohbet ---------- */
+.chat-log { flex: 1; overflow-y: auto; padding: 10px 12px; display: flex; flex-direction: column; gap: 8px; }
+.chat-line { display: flex; gap: 8px; align-items: flex-start; }
+.chat-line.system { justify-content: center; }
+.chat-line.system .chat-bubble { background: transparent; color: var(--ink-faint); font-size: .78rem; font-style: italic; text-align: center; }
+.chat-avatar { font-size: 1.1rem; margin-top: 2px; }
+.chat-bubble { background: var(--panel-alt); border-radius: 12px; padding: 6px 10px; font-size: .85rem; max-width: 78%; }
+.chat-name { display: block; font-size: .68rem; color: var(--gold-light); font-weight: 700; margin-bottom: 2px; }
+.chat-form { display: flex; gap: 8px; padding: 10px; border-top: 1px solid var(--panel-line); }
+.chat-input { flex: 1; background: var(--panel-alt); border: 1px solid var(--panel-line); border-radius: 999px; padding: 10px 16px; color: var(--ink); }
+.chat-send { background: var(--gold); border: none; color: #241505; width: 38px; height: 38px; border-radius: 50%; cursor: pointer; font-size: 1rem; flex-shrink: 0; }
+.quick-msgs { display: flex; gap: 6px; padding: 0 10px 8px; overflow-x: auto; }
+.quick-msg-btn { flex-shrink: 0; background: var(--panel-alt); border: 1px solid var(--panel-line); color: var(--ink-dim); border-radius: 999px; padding: 6px 12px; font-size: .78rem; white-space: nowrap; cursor: pointer; }
+
+/* ---------- Oyun ekranı ---------- */
+.game-layout { display: flex; flex-direction: column; flex: 1; min-height: 0; max-width: 720px; margin: 0 auto; width: 100%; }
+.game-header { display: grid; grid-template-columns: auto 1fr auto auto; gap: 10px; align-items: center; margin-bottom: 12px; }
+.round-badge { display: flex; flex-direction: column; line-height: 1.1; }
+.round-eyebrow { font-size: .62rem; text-transform: uppercase; letter-spacing: .1em; color: var(--ink-faint); }
+#round-value { font-family: var(--font-display); font-weight: 700; font-size: 1.15rem; color: var(--gold-light); }
+.game-timer { display: flex; flex-direction: column; gap: 4px; }
+.timer-bar { height: 6px; border-radius: 999px; background: var(--panel-alt); overflow: hidden; width: 100%; min-width: 80px; }
+.timer-bar-fill { height: 100%; background: linear-gradient(90deg, var(--emerald), var(--gold)); width: 100%; transition: width 1s linear; }
+#timer-text { font-family: var(--font-mono); font-size: .72rem; color: var(--ink-faint); text-align: center; }
+.token-pill { display: flex; align-items: center; gap: 6px; background: var(--panel); border: 1px solid var(--panel-line); padding: 8px 12px; border-radius: 999px; font-family: var(--font-mono); font-weight: 700; }
+.chat-badge { position: absolute; top: -2px; right: -2px; background: var(--ruby); color: #fff; font-size: .6rem; min-width: 16px; height: 16px; border-radius: 999px; display: flex; align-items: center; justify-content: center; padding: 0 3px; }
+
+.game-tabs { display: flex; gap: 4px; background: var(--panel); border-radius: 999px; padding: 4px; margin-bottom: 12px; }
+.game-tab { position: relative; flex: 1; background: none; border: none; color: var(--ink-faint); padding: 9px 6px; border-radius: 999px; font-weight: 700; font-size: .8rem; cursor: pointer; }
+.game-tab.active { background: var(--panel-alt); color: var(--gold-light); }
+.game-panels { flex: 1; min-height: 0; overflow-y: auto; }
+.game-panel { display: none; height: 100%; }
+.game-panel.active { display: block; }
+
+.market-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 12px; padding-bottom: 12px; }
+
+/* İmza öğe: Değer Perdesi (balmumu mühür) */
+.item-card {
+  background: var(--panel); border: 1px solid var(--panel-line); border-radius: var(--radius-m);
+  padding: 14px 12px 12px; text-align: left; cursor: pointer; position: relative; overflow: hidden;
+  display: flex; flex-direction: column; gap: 4px; transition: transform .15s, border-color .15s;
+}
+.item-card:active { transform: scale(.97); }
+.item-card.owned { border-color: rgba(212,162,76,.4); }
+.item-card.sold { opacity: .45; cursor: default; }
+.item-seal {
+  position: absolute; top: 10px; right: 10px; width: 30px; height: 30px; border-radius: 50%;
+  background: radial-gradient(circle at 35% 30%, var(--gold-light), var(--gold-deep));
+  display: flex; align-items: center; justify-content: center; box-shadow: 0 2px 6px rgba(0,0,0,.4);
+}
+.item-seal-mark { font-family: var(--font-display); font-weight: 700; color: #2b1a05; font-size: .95rem; }
+.item-card.revealed .item-seal { animation: seal-crack .5s ease forwards; }
+@keyframes seal-crack {
+  0% { transform: scale(1) rotate(0); }
+  40% { transform: scale(1.3) rotate(-8deg); filter: brightness(1.3); }
+  70% { transform: scale(.4) rotate(10deg); opacity: .4; }
+  100% { transform: scale(0) rotate(20deg); opacity: 0; }
+}
+.item-rarity-tag { font-size: .64rem; text-transform: uppercase; letter-spacing: .08em; font-weight: 700; padding: 2px 8px; border-radius: 999px; width: fit-content; }
+.item-rarity-tag.common { color: var(--rarity-common); background: rgba(139,147,168,.15); }
+.item-rarity-tag.uncommon { color: var(--rarity-uncommon); background: rgba(52,199,123,.15); }
+.item-rarity-tag.rare { color: var(--rarity-sapphire, var(--sapphire)); background: rgba(76,143,212,.15); }
+.item-rarity-tag.epic { color: var(--rarity-epic); background: rgba(162,76,212,.15); }
+.item-rarity-tag.legendary { color: var(--gold-light); background: linear-gradient(90deg, rgba(232,199,122,.2), rgba(228,67,44,.2)); }
+.item-name { font-family: var(--font-display); font-weight: 700; font-size: 1.05rem; margin: 2px 0 0; line-height: 1.2; }
+.item-category { font-size: .72rem; color: var(--ink-faint); margin: 0; }
+.item-footer { display: flex; justify-content: space-between; align-items: center; margin-top: 8px; font-size: .85rem; }
+.item-cost { display: flex; align-items: center; gap: 4px; font-family: var(--font-mono); font-weight: 700; color: var(--gold-light); }
+.item-owner { font-size: .72rem; color: var(--ink-faint); }
+.item-value-reveal { font-family: var(--font-mono); font-weight: 700; color: var(--emerald); font-size: 1rem; display: none; }
+.item-card.revealed .item-value-reveal { display: block; }
+.item-card.revealed .item-cost { display: none; }
+
+.players-list, .offers-list { display: flex; flex-direction: column; gap: 8px; padding-bottom: 12px; }
+
+.offer-card { background: var(--panel); border: 1px solid var(--panel-line); border-radius: var(--radius-m); padding: 12px; }
+.offer-head { display: flex; justify-content: space-between; align-items: center; font-size: .85rem; margin-bottom: 8px; }
+.offer-body { font-size: .82rem; color: var(--ink-dim); margin-bottom: 10px; line-height: 1.5; }
+.offer-actions { display: flex; gap: 8px; }
+.offer-actions .btn { margin-top: 0; padding: 10px; font-size: .85rem; }
+
+/* Kayan işlem butonu (envanterde eşyaya dokunca "Teklif Ver / Satın Al") */
+.fab-trade {
+  position: fixed; right: 20px; bottom: calc(20px + var(--safe-bottom));
+  background: linear-gradient(135deg, var(--violet-light), var(--violet)); color: #fff; border: none;
+  border-radius: 999px; padding: 14px 20px; font-weight: 700; box-shadow: 0 10px 30px rgba(139,92,240,.4);
+  display: flex; align-items: center; gap: 8px; cursor: pointer; z-index: 20;
+}
+
+/* ---------- Sohbet çekmecesi (oyun içi) ---------- */
+.chat-drawer {
+  position: fixed; inset: 0; z-index: 40; background: rgba(10,12,23,.7); backdrop-filter: blur(4px);
+  display: flex; flex-direction: column; justify-content: flex-end; transform: translateY(100%); transition: transform .3s ease;
+}
+.chat-drawer.open { transform: translateY(0); }
+.chat-drawer-header { display: flex; justify-content: space-between; align-items: center; padding: calc(14px + var(--safe-top)) 16px 12px; font-family: var(--font-display); font-weight: 700; font-size: 1.2rem; background: var(--panel); border-radius: 20px 20px 0 0; border-bottom: 1px solid var(--panel-line); }
+.chat-drawer .chat-log { background: var(--panel); flex: 1; max-height: 50vh; }
+.chat-drawer .chat-form, .chat-drawer .quick-msgs { background: var(--panel); }
+.chat-drawer .chat-form { padding-bottom: calc(10px + var(--safe-bottom)); border-radius: 0 0 20px 20px; }
+
+/* ---------- Modal (takas teklifi vb.) ---------- */
+.modal-backdrop { position: fixed; inset: 0; background: rgba(6,7,14,.72); backdrop-filter: blur(3px); z-index: 60; display: flex; align-items: flex-end; justify-content: center; animation: fade-in .2s ease; }
+@keyframes fade-in { from { opacity: 0; } to { opacity: 1; } }
+.modal-sheet {
+  background: var(--panel); border-radius: 24px 24px 0 0; border: 1px solid var(--panel-line); border-bottom: none;
+  width: 100%; max-width: 560px; max-height: 88vh; overflow-y: auto; padding: 18px 18px calc(18px + var(--safe-bottom));
+  animation: sheet-up .3s cubic-bezier(.2,.8,.2,1);
+}
+@keyframes sheet-up { from { transform: translateY(30px); opacity: 0; } to { transform: none; opacity: 1; } }
+@media (min-width: 720px) {
+  .modal-backdrop { align-items: center; }
+  .modal-sheet { border-radius: 24px; border-bottom: 1px solid var(--panel-line); }
+}
+.modal-title { font-family: var(--font-display); font-size: 1.4rem; font-weight: 700; margin: 4px 0 16px; }
+.modal-close { position: absolute; top: 14px; right: 14px; }
+.pick-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); gap: 8px; max-height: 220px; overflow-y: auto; margin-bottom: 4px; }
+.pick-item { border: 2px solid var(--panel-line); border-radius: 12px; padding: 8px; background: var(--panel-alt); font-size: .74rem; cursor: pointer; text-align: left; }
+.pick-item.selected { border-color: var(--gold); background: rgba(212,162,76,.12); }
+.pick-item b { display: block; font-family: var(--font-display); font-size: .9rem; margin-bottom: 2px; }
+.token-stepper { display: flex; align-items: center; gap: 12px; margin: 10px 0; }
+.token-stepper button { width: 38px; height: 38px; border-radius: 50%; border: 1px solid var(--panel-line); background: var(--panel-alt); color: var(--ink); font-size: 1.2rem; cursor: pointer; }
+.token-stepper span { font-family: var(--font-mono); font-size: 1.1rem; min-width: 40px; text-align: center; }
+
+/* ---------- Açılış (reveal) ---------- */
+.reveal-layout { max-width: 640px; margin: 0 auto; width: 100%; text-align: center; }
+.reveal-title { font-size: 2rem; }
+.reveal-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 12px; margin: 20px 0; }
+
+/* ---------- Sonuçlar ---------- */
+.results-panel { max-width: 520px; }
+.winner-banner {
+  text-align: center; padding: 26px 16px; border-radius: var(--radius-l);
+  background: radial-gradient(circle at 50% 0%, rgba(212,162,76,.25), transparent 70%), var(--panel);
+  border: 1px solid var(--panel-line); margin-bottom: 18px;
+}
+.winner-banner .w-avatar { font-size: 3rem; display: block; }
+.winner-banner .w-name { font-family: var(--font-display); font-weight: 700; font-size: 1.6rem; color: var(--gold-light); margin: 6px 0 2px; }
+.winner-banner .w-score { font-family: var(--font-mono); color: var(--ink-dim); }
+.standings-list { display: flex; flex-direction: column; gap: 8px; margin-bottom: 10px; }
+.standing-row { display: flex; align-items: center; gap: 12px; background: var(--panel); border: 1px solid var(--panel-line); border-radius: var(--radius-s); padding: 10px 14px; }
+.standing-rank { font-family: var(--font-mono); color: var(--ink-faint); width: 20px; }
+.standing-row.rank-1 { border-color: var(--gold); }
+.standing-avatar { font-size: 1.3rem; }
+.standing-main { flex: 1; display: flex; flex-direction: column; }
+.standing-name { font-weight: 700; font-size: .92rem; }
+.standing-score { font-family: var(--font-mono); font-weight: 700; color: var(--gold-light); }
+
+/* ---------- Toasts ---------- */
+#toast-root { position: fixed; top: calc(14px + var(--safe-top)); left: 50%; transform: translateX(-50%); z-index: 90; display: flex; flex-direction: column; gap: 8px; align-items: center; pointer-events: none; }
+.toast { background: var(--panel-alt); border: 1px solid var(--panel-line); color: var(--ink); padding: 10px 18px; border-radius: 999px; font-size: .85rem; box-shadow: 0 8px 24px rgba(0,0,0,.4); animation: toast-in .25s ease; }
+.toast.error { border-color: rgba(228,67,44,.5); color: #ffb4a6; }
+@keyframes toast-in { from { opacity: 0; transform: translateY(-8px); } to { opacity: 1; transform: none; } }
+
+/* ---------- Yatay mod (landscape) — geniş ekranlarda daha ferah kart ızgarası ---------- */
+@media (orientation: landscape) and (min-width: 640px) {
+  .game-layout, .lobby-layout { max-width: 860px; }
+  .market-grid, .reveal-grid { grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); }
+  .lobby-players { grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); }
+}
+
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-thumb { background: var(--panel-line); border-radius: 999px; }
+
+@media (min-width: 900px) {
+  body { overflow: auto; }
+}

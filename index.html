@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1" />
+<title>Rüya Pazarı — Gizemli Takas Oyunu</title>
+<meta name="description" content="Rüya Pazarı: pazarlık yap, blöf yap, takas et. Eşyaların gerçek değeri sadece oyun sonunda açığa çıkar." />
+<meta name="theme-color" content="#0B0E1A" />
+<link rel="manifest" href="manifest.json" />
+<link rel="icon" href="icons/favicon-32.png" sizes="32x32" />
+<link rel="apple-touch-icon" href="icons/icon-180.png" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,500;0,600;0,700;1,600&family=Manrope:wght@400;500;600;700;800&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+<div id="ambient" aria-hidden="true">
+  <div class="motes"></div>
+</div>
+
+<div id="toast-root" aria-live="polite"></div>
+<div id="modal-root"></div>
+
+<main id="app">
+
+  <!-- ============ YÜKLENİYOR ============ -->
+  <section class="screen active" id="screen-loading" data-screen="loading">
+    <div class="lamp-emblem" role="img" aria-label="Rüya Pazarı">
+      <svg viewBox="0 0 120 120" class="lamp-svg">
+        <circle cx="60" cy="60" r="46" class="lamp-ring lamp-ring-outer"></circle>
+        <circle cx="60" cy="60" r="34" class="lamp-ring lamp-ring-inner"></circle>
+        <path class="lamp-mark" d="M60 30 L68 52 L92 52 L72 66 L80 90 L60 76 L40 90 L48 66 L28 52 L52 52 Z"></path>
+      </svg>
+    </div>
+    <p class="loading-label">Pazar kapıları aralanıyor…</p>
+  </section>
+
+  <!-- ============ GİRİŞ (isim + avatar) ============ -->
+  <section class="screen" id="screen-auth" data-screen="auth">
+    <div class="panel-narrow">
+      <h1 class="brand-title">Rüya Pazarı</h1>
+      <p class="brand-tagline">Hiçbir eşya göründüğü gibi değildir.</p>
+
+      <label class="field-label" for="input-name">Tüccar adın</label>
+      <input id="input-name" class="text-input" type="text" maxlength="16" placeholder="ör. Gölge Tüccar" autocomplete="off" />
+
+      <p class="field-label">Simgeni seç</p>
+      <div id="avatar-grid" class="avatar-grid" role="listbox" aria-label="Avatar seç"></div>
+
+      <button id="btn-enter-bazaar" class="btn btn-primary btn-block" disabled>
+        <span>Pazara Gir</span>
+      </button>
+      <p class="microcopy">Kayıt yok, şifre yok — sadece anonim bir giriş.</p>
+    </div>
+  </section>
+
+  <!-- ============ ANA MENÜ ============ -->
+  <section class="screen" id="screen-home" data-screen="home">
+    <div class="panel-narrow">
+      <div class="home-header">
+        <div class="player-chip" id="home-player-chip"></div>
+      </div>
+      <h2 class="section-title">Pazara nasıl gireceksin?</h2>
+
+      <button class="btn btn-primary btn-block btn-large" id="btn-quick-join">
+        <span class="btn-icon">⚡</span>
+        <span>Hızlı Katıl</span>
+      </button>
+      <button class="btn btn-secondary btn-block btn-large" id="btn-create-room">
+        <span class="btn-icon">🏮</span>
+        <span>Oda Oluştur</span>
+      </button>
+      <button class="btn btn-ghost btn-block btn-large" id="btn-join-code">
+        <span class="btn-icon">🔑</span>
+        <span>Oda Kodu ile Katıl</span>
+      </button>
+    </div>
+  </section>
+
+  <!-- ============ ODA OLUŞTUR ============ -->
+  <section class="screen" id="screen-create" data-screen="create">
+    <div class="panel-narrow">
+      <button class="btn-back" data-nav="home" aria-label="Geri">← Geri</button>
+      <h2 class="section-title">Oda Oluştur</h2>
+      <p class="field-label">Maksimum oyuncu sayısı</p>
+      <div class="size-grid" id="max-players-grid">
+        <button class="size-option" data-size="2">2</button>
+        <button class="size-option" data-size="4">4</button>
+        <button class="size-option" data-size="6">6</button>
+        <button class="size-option" data-size="8">8</button>
+      </div>
+      <button id="btn-confirm-create" class="btn btn-primary btn-block btn-large">
+        <span>Odayı Aç</span>
+      </button>
+    </div>
+  </section>
+
+  <!-- ============ KOD İLE KATIL ============ -->
+  <section class="screen" id="screen-join" data-screen="join">
+    <div class="panel-narrow">
+      <button class="btn-back" data-nav="home" aria-label="Geri">← Geri</button>
+      <h2 class="section-title">Davet Kodunu Gir</h2>
+      <input id="input-code" class="text-input code-input" type="text" maxlength="5" placeholder="XXXXX" autocomplete="off" />
+      <button id="btn-confirm-join" class="btn btn-primary btn-block btn-large">
+        <span>Pazara Katıl</span>
+      </button>
+      <p id="join-error" class="field-error" hidden></p>
+    </div>
+  </section>
+
+  <!-- ============ LOBİ ============ -->
+  <section class="screen" id="screen-lobby" data-screen="lobby">
+    <div class="lobby-layout">
+      <header class="lobby-header">
+        <button class="btn-back" id="btn-leave-lobby" aria-label="Ayrıl">← Ayrıl</button>
+        <div class="room-code-badge">
+          <span class="room-code-label">Oda Kodu</span>
+          <button class="room-code-value" id="room-code-display" title="Kopyalamak için dokun"></button>
+        </div>
+      </header>
+
+      <div class="lobby-countdown-wrap">
+        <div class="countdown-ring" id="countdown-ring">
+          <svg viewBox="0 0 80 80"><circle cx="40" cy="40" r="34"></circle></svg>
+          <span id="countdown-text">60</span>
+        </div>
+        <p class="lobby-status" id="lobby-status-text">Oyuncular bekleniyor…</p>
+      </div>
+
+      <div class="lobby-players" id="lobby-players"></div>
+
+      <div class="lobby-actions">
+        <button id="btn-ready" class="btn btn-primary btn-block btn-large">
+          <span>Hazırım</span>
+        </button>
+        <button id="btn-quickstart" class="btn btn-gold btn-block btn-large" hidden>
+          <span>⚡ Hızlı Başlat</span>
+        </button>
+      </div>
+
+      <div class="lobby-chat">
+        <div class="chat-log" id="lobby-chat-log"></div>
+        <form id="lobby-chat-form" class="chat-form">
+          <input id="lobby-chat-input" class="chat-input" type="text" maxlength="240" placeholder="Bir şeyler yaz…" autocomplete="off" />
+          <button type="submit" class="chat-send" aria-label="Gönder">➤</button>
+        </form>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ OYUN ============ -->
+  <section class="screen" id="screen-game" data-screen="game">
+    <div class="game-layout">
+      <header class="game-header">
+        <div class="round-badge">
+          <span class="round-eyebrow">Tur</span>
+          <span id="round-value">1 / 10</span>
+        </div>
+        <div class="game-timer" id="game-timer">
+          <div class="timer-bar"><div class="timer-bar-fill" id="timer-bar-fill"></div></div>
+          <span id="timer-text">90</span>
+        </div>
+        <div class="token-pill">
+          <span class="token-icon">🪙</span>
+          <span id="token-value">0</span>
+        </div>
+        <button class="icon-btn" id="btn-open-chat" aria-label="Sohbet">💬<span class="chat-badge" id="chat-badge" hidden></span></button>
+      </header>
+
+      <div class="game-tabs" role="tablist">
+        <button class="game-tab active" data-tab="market" role="tab">Pazar</button>
+        <button class="game-tab" data-tab="inventory" role="tab">Envanterim</button>
+        <button class="game-tab" data-tab="players" role="tab">Oyuncular</button>
+        <button class="game-tab" data-tab="offers" role="tab">Teklifler<span class="chat-badge" id="offers-badge" hidden></span></button>
+      </div>
+
+      <div class="game-panels">
+        <div class="game-panel active" data-panel="market">
+          <div class="market-grid" id="market-grid"></div>
+        </div>
+        <div class="game-panel" data-panel="inventory">
+          <div class="market-grid" id="inventory-grid"></div>
+          <p class="empty-hint" id="inventory-empty">Henüz hiç eşyan yok. Pazardan bir şeyler al!</p>
+        </div>
+        <div class="game-panel" data-panel="players">
+          <div class="players-list" id="game-players-list"></div>
+        </div>
+        <div class="game-panel" data-panel="offers">
+          <div class="offers-list" id="offers-list"></div>
+          <p class="empty-hint" id="offers-empty">Şu an bekleyen bir teklif yok.</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Sohbet çekmecesi -->
+    <div class="chat-drawer" id="chat-drawer">
+      <div class="chat-drawer-header">
+        <span>Pazar Meydanı</span>
+        <button class="icon-btn" id="btn-close-chat" aria-label="Kapat">✕</button>
+      </div>
+      <div class="chat-log" id="game-chat-log"></div>
+      <div class="quick-msgs" id="quick-msgs"></div>
+      <form id="game-chat-form" class="chat-form">
+        <input id="game-chat-input" class="chat-input" type="text" maxlength="240" placeholder="Pazarlık et…" autocomplete="off" />
+        <button type="submit" class="chat-send" aria-label="Gönder">➤</button>
+      </form>
+    </div>
+  </section>
+
+  <!-- ============ AÇILIŞ (REVEAL) ============ -->
+  <section class="screen" id="screen-reveal" data-screen="reveal">
+    <div class="reveal-layout">
+      <h2 class="section-title reveal-title">Mühürler Kırılıyor…</h2>
+      <div class="reveal-grid" id="reveal-grid"></div>
+      <button class="btn btn-primary btn-block btn-large" id="btn-see-results" hidden>
+        <span>Sonuçları Gör</span>
+      </button>
+    </div>
+  </section>
+
+  <!-- ============ SONUÇLAR ============ -->
+  <section class="screen" id="screen-results" data-screen="results">
+    <div class="panel-narrow results-panel">
+      <div class="winner-banner" id="winner-banner"></div>
+      <div class="standings-list" id="standings-list"></div>
+      <div class="results-actions">
+        <button class="btn btn-gold btn-block btn-large" id="btn-rematch">
+          <span>🔁 Tekrar Oyna</span>
+        </button>
+        <button class="btn btn-secondary btn-block" id="btn-new-room">Yeni Oda Oluştur</button>
+        <button class="btn btn-ghost btn-block" id="btn-leave-results">Lobiden Ayrıl</button>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<!-- Şablonlar -->
+<template id="tpl-item-card">
+  <button class="item-card" type="button">
+    <div class="item-seal">
+      <span class="item-seal-mark">?</span>
+    </div>
+    <div class="item-rarity-tag"></div>
+    <h3 class="item-name"></h3>
+    <p class="item-category"></p>
+    <div class="item-footer">
+      <span class="item-cost"><span class="token-icon">🪙</span><span class="item-cost-value"></span></span>
+      <span class="item-owner"></span>
+    </div>
+  </button>
+</template>
+
+<template id="tpl-player-row">
+  <div class="player-row">
+    <span class="player-avatar"></span>
+    <div class="player-row-main">
+      <span class="player-row-name"></span>
+      <span class="player-row-meta"></span>
+    </div>
+    <span class="player-row-status"></span>
+  </div>
+</template>
+
+<template id="tpl-chat-line">
+  <div class="chat-line">
+    <span class="chat-avatar"></span>
+    <div class="chat-bubble">
+      <span class="chat-name"></span>
+      <span class="chat-text"></span>
+    </div>
+  </div>
+</template>
+
+<script type="module" src="app.js"></script>
+</body>
+</html>

@@ -1,0 +1,124 @@
+rules_version = '2';
+
+// Rüya Pazarı — Firestore Security Rules
+//
+// Tasarım ilkesi:
+//  - Ekonomiyi etkileyen her şey (jeton, envanter, eşya gerçek değeri, takas
+//    sonuçlandırma, tur ilerletme) SADECE Cloud Functions (Admin SDK) tarafından
+//    yazılabilir. İstemciler bu alanlara asla doğrudan yazamaz.
+//  - Oyuncular sadece kendi "sosyal" verilerini (isim, avatar, hazır durumu,
+//    sohbet mesajı, takas TEKLİFİ oluşturma) yazabilir; teklif SONUÇLANDIRMA
+//    yine sunucu tarafında yapılır.
+//  - Gizli eşya değerleri (marketSecrets) oyun bitene kadar hiçbir istemci
+//    tarafından okunamaz.
+
+function isSignedIn() {
+  return request.auth != null;
+}
+
+function room(roomId) {
+  return get(/databases/$(database)/documents/rooms/$(roomId)).data;
+}
+
+function isRoomPlayer(roomId) {
+  return isSignedIn() &&
+    exists(/databases/$(database)/documents/rooms/$(roomId)/players/$(request.auth.uid));
+}
+
+function isHost(roomId) {
+  return isSignedIn() && room(roomId).hostUid == request.auth.uid;
+}
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    match /rooms/{roomId} {
+      // Herkes lobi bilgisini (kod ile) okuyabilir; ekonomi alanları burada yok.
+      allow read: if isSignedIn();
+
+      // Oda sadece oluşturulurken istemci tarafından yazılabilir.
+      allow create: if isSignedIn()
+        && request.resource.data.hostUid == request.auth.uid
+        && request.resource.data.status == 'lobby'
+        && request.resource.data.round == 0
+        && request.resource.data.maxPlayers in [2, 4, 6, 8];
+
+      // Lobide sadece host, oda ayarlarını (maxPlayers, quickStart bayrağı,
+      // countdown zaman damgası) güncelleyebilir. round/status/winnerUid gibi
+      // oyun-kritik alanlar yalnızca Cloud Functions (Admin SDK) tarafından
+      // değiştirilir — Admin SDK bu kurallara tabi değildir.
+      allow update: if isHost(roomId)
+        && room(roomId).status == 'lobby'
+        && request.resource.data.status == 'lobby'
+        && request.resource.data.round == 0
+        && !request.resource.data.diff(resource.data).affectedKeys()
+              .hasAny(['status', 'round', 'winnerUid', 'roundEndsAt', 'startedAt']);
+
+      allow delete: if false;
+
+      match /players/{uid} {
+        allow read: if isSignedIn();
+
+        // Bir oyuncu sadece kendi doküman ını oluşturabilir/güncelleyebilir,
+        // ve sadece sosyal alanları (isim, avatar, hazır, bağlı) değiştirebilir.
+        // tokens / inventory / score alanlarına dokunamaz — bunlar Admin SDK'den gelir.
+        allow create: if isSignedIn() && request.auth.uid == uid
+          && request.resource.data.uid == uid
+          && request.resource.data.tokens == 0
+          && request.resource.data.score == 0
+          && request.resource.data.inventory.size() == 0;
+
+        allow update: if isSignedIn() && request.auth.uid == uid
+          && !request.resource.data.diff(resource.data).affectedKeys()
+                .hasAny(['tokens', 'inventory', 'score', 'uid']);
+
+        allow delete: if isSignedIn() && request.auth.uid == uid && room(roomId).status == 'lobby';
+      }
+
+      // Pazardaki eşyaların GÖRÜNÜR (isim, nadirlik, açıklama, sahip) verisi.
+      // Fiyat/sahiplik değişimi (satın alma / takas) yalnızca Cloud Functions
+      // ile yapılır; istemciler asla yazamaz.
+      match /market/{itemId} {
+        allow read: if isSignedIn();
+        allow write: if false;
+      }
+
+      // Gerçek değerler — oyun bitene kadar KİMSE okuyamaz.
+      match /marketSecrets/{itemId} {
+        allow read: if isRoomPlayer(roomId) && room(roomId).status == 'finished';
+        allow write: if false;
+      }
+
+      // Takas teklifleri: teklif eden kişi teklifi oluşturabilir/iptal edebilir,
+      // ama kabul/red SONUCU (jeton+envanter aktarımı) Cloud Function ile
+      // yapılır — buradan sadece "durum" pending->cancelled değişebilir.
+      match /trades/{tradeId} {
+        allow read: if isRoomPlayer(roomId);
+        allow create: if isRoomPlayer(roomId)
+          && request.resource.data.fromUid == request.auth.uid
+          && request.resource.data.status == 'pending';
+        allow update: if isRoomPlayer(roomId)
+          && resource.data.fromUid == request.auth.uid
+          && resource.data.status == 'pending'
+          && request.resource.data.status == 'cancelled';
+        allow delete: if false;
+      }
+
+      match /chat/{msgId} {
+        allow read: if isRoomPlayer(roomId);
+        allow create: if isRoomPlayer(roomId)
+          && request.resource.data.uid == request.auth.uid
+          && request.resource.data.text is string
+          && request.resource.data.text.size() <= 240;
+        allow update, delete: if false;
+      }
+
+      match /reveal/{docId} {
+        // Sonuç dokümanı sadece oyun bittiğinde Cloud Function tarafından
+        // yazılır; istemciler yalnızca okur.
+        allow read: if isRoomPlayer(roomId);
+        allow write: if false;
+      }
+    }
+  }
+}
