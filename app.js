@@ -6,7 +6,7 @@ import {
   callRequestStart, callAdvanceRound, callBuyItem, callRespondTrade, callRematch,
   getDocs, doc, db,
 } from "./firebase.js";
-import { collection } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+import { collection } from "https://www.gstatic.com/firebasejs/12.17.1/firebase-firestore.js";
 
 /* ==========================================================================
    Durum
@@ -38,8 +38,44 @@ const state = {
 const $ = (sel, root = document) => root.querySelector(sel);
 const $$ = (sel, root = document) => Array.from(root.querySelectorAll(sel));
 
+// Bir elementi güvenle bağlar: element bulunamazsa ya da handler patlarsa
+// TÜM uygulamayı değil sadece o butonu etkiler, ve konsola/toast'a açıkça yazar.
+function on(selector, event, handler, root = document) {
+  const el = typeof selector === "string" ? root.querySelector(selector) : selector;
+  if (!el) {
+    console.warn(`[Rüya Pazarı] Element bulunamadı, olay bağlanamadı: ${selector}`);
+    return;
+  }
+  el.addEventListener(event, async (e) => {
+    try {
+      await handler(e);
+    } catch (err) {
+      console.error(`[Rüya Pazarı] "${selector}" işlenirken hata:`, err);
+      toast(friendlyError(err), "error");
+    }
+  });
+}
+
+// Hiçbir hata sessiz kalmasın: yakalanmamış hataları da toast olarak göster.
+window.addEventListener("error", (e) => {
+  console.error("[Rüya Pazarı] Beklenmeyen hata:", e.error || e.message);
+  toast("Beklenmeyen bir hata oluştu: " + (e.error?.message || e.message || ""), "error");
+});
+window.addEventListener("unhandledrejection", (e) => {
+  console.error("[Rüya Pazarı] Yakalanmamış promise hatası:", e.reason);
+  toast(friendlyError(e.reason), "error");
+});
+
 function show(screenName) {
   $$(".screen").forEach((s) => s.classList.toggle("active", s.dataset.screen === screenName));
+  if (screenName === "home") renderHomeResumeBanner();
+}
+
+function renderHomeResumeBanner() {
+  const banner = $("#resume-banner");
+  if (!banner) return;
+  const lastRoom = loadLastRoom();
+  banner.hidden = !lastRoom || lastRoom === state.roomId;
 }
 
 function toast(message, type = "info") {
@@ -108,12 +144,26 @@ async function boot() {
   bindStaticEvents();
   registerServiceWorker();
 
+  // Bağlantı çok uzun sürerse (ör. yanlış Firebase yapılandırması, ağ sorunu)
+  // kullanıcı sonsuza kadar dönen bir yükleme ekranında kalmasın.
+  const bootTimeout = setTimeout(() => {
+    if ($("#screen-loading").classList.contains("active")) {
+      toast("Bağlantı beklenenden uzun sürüyor. Firebase yapılandırmasını kontrol et.", "error");
+      show(loadProfile()?.name ? "home" : "auth");
+    }
+  }, 9000);
+
   try {
     const user = await ensureSignedIn();
     state.me.uid = user.uid;
   } catch (e) {
+    clearTimeout(bootTimeout);
+    console.error("[Rüya Pazarı] Giriş başarısız:", e);
     toast("Bağlantı kurulamadı: " + friendlyError(e), "error");
+    show("auth");
+    return;
   }
+  clearTimeout(bootTimeout);
 
   const profile = loadProfile();
   if (profile && profile.name) {
@@ -185,7 +235,7 @@ function escapeHtml(str) {
 function bindStaticEvents() {
   $("#input-name").addEventListener("input", validateAuthForm);
 
-  $("#btn-enter-bazaar").addEventListener("click", () => {
+  on("#btn-enter-bazaar", "click", () => {
     audioCtx(); // kullanıcı jesti ile ses bağlamını aç
     const name = $("#input-name").value.trim();
     if (name.length < 2) return;
@@ -196,39 +246,35 @@ function bindStaticEvents() {
     show("home");
   });
 
-  $$("[data-nav]").forEach((el) => el.addEventListener("click", () => show(el.dataset.nav)));
+  $$("[data-nav]").forEach((el) => on(el, "click", () => show(el.dataset.nav)));
 
-  $("#btn-quick-join").addEventListener("click", async () => {
+  on("#btn-quick-join", "click", async () => {
     sfx.tap();
-    try {
-      const roomId = await quickJoin({ name: state.me.name, avatar: state.me.avatar });
-      await enterRoom(roomId);
-    } catch (e) { toast(friendlyError(e), "error"); }
+    const roomId = await quickJoin({ name: state.me.name, avatar: state.me.avatar });
+    await enterRoom(roomId);
   });
 
-  $("#btn-create-room").addEventListener("click", () => show("create"));
-  $("#btn-join-code").addEventListener("click", () => show("join"));
+  on("#btn-create-room", "click", () => show("create"));
+  on("#btn-join-code", "click", () => show("join"));
 
   let selectedSize = 4;
   $$(".size-option", $("#max-players-grid")).forEach((btn) => {
     if (Number(btn.dataset.size) === selectedSize) btn.classList.add("selected");
-    btn.addEventListener("click", () => {
+    on(btn, "click", () => {
       $$(".size-option", $("#max-players-grid")).forEach((b) => b.classList.remove("selected"));
       btn.classList.add("selected");
       selectedSize = Number(btn.dataset.size);
     });
   });
-  $("#btn-confirm-create").addEventListener("click", async () => {
-    try {
-      const roomId = await createRoom({ name: state.me.name, avatar: state.me.avatar, maxPlayers: selectedSize });
-      await enterRoom(roomId);
-    } catch (e) { toast(friendlyError(e), "error"); }
+  on("#btn-confirm-create", "click", async () => {
+    const roomId = await createRoom({ name: state.me.name, avatar: state.me.avatar, maxPlayers: selectedSize });
+    await enterRoom(roomId);
   });
 
-  $("#input-code").addEventListener("input", (e) => {
+  on("#input-code", "input", (e) => {
     e.target.value = e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, "");
   });
-  $("#btn-confirm-join").addEventListener("click", async () => {
+  on("#btn-confirm-join", "click", async () => {
     const code = $("#input-code").value.trim();
     $("#join-error").hidden = true;
     if (code.length < 4) { $("#join-error").textContent = "Lütfen geçerli bir kod gir."; $("#join-error").hidden = false; return; }
@@ -241,54 +287,74 @@ function bindStaticEvents() {
     }
   });
 
-  $("#btn-leave-lobby").addEventListener("click", handleLeaveRoom);
+  on("#btn-leave-lobby", "click", handleLeaveRoom);
 
-  $("#room-code-display").addEventListener("click", () => {
+  on("#room-code-display", "click", () => {
     navigator.clipboard?.writeText(state.roomId).then(() => toast("Kod kopyalandı."));
   });
 
-  $("#btn-ready").addEventListener("click", async () => {
+  on("#btn-ready", "click", async () => {
     const me = state.players.find((p) => p.id === state.me.uid);
     await setReady(state.roomId, !(me && me.ready));
     sfx.tap();
   });
 
-  $("#btn-quickstart").addEventListener("click", async () => {
-    try { await callRequestStart({ roomId: state.roomId }); } catch (e) { toast(friendlyError(e), "error"); }
+  on("#btn-quickstart", "click", async () => {
+    await callRequestStart({ roomId: state.roomId });
   });
 
-  $("#lobby-chat-form").addEventListener("submit", (e) => {
+  on("#lobby-chat-form", "submit", (e) => {
     e.preventDefault();
     submitChat($("#lobby-chat-input"));
   });
 
-  $$(".game-tab").forEach((tab) => tab.addEventListener("click", () => switchTab(tab.dataset.tab)));
+  $$(".game-tab").forEach((tab) => on(tab, "click", () => switchTab(tab.dataset.tab)));
 
-  $("#btn-open-chat").addEventListener("click", () => {
+  on("#btn-open-chat", "click", () => {
     $("#chat-drawer").classList.add("open");
     state.chatUnread = 0;
     $("#chat-badge").hidden = true;
   });
-  $("#btn-close-chat").addEventListener("click", () => $("#chat-drawer").classList.remove("open"));
-  $("#game-chat-form").addEventListener("submit", (e) => {
+  on("#btn-close-chat", "click", () => $("#chat-drawer").classList.remove("open"));
+  on("#game-chat-form", "submit", (e) => {
     e.preventDefault();
     submitChat($("#game-chat-input"));
   });
   buildQuickMessages();
 
-  $("#btn-see-results").addEventListener("click", () => show("results"));
+  on("#btn-menu-game", "click", () => confirmBackToMenu());
+  on("#btn-menu-reveal", "click", () => confirmBackToMenu());
 
-  $("#btn-rematch").addEventListener("click", async () => {
-    try {
-      await callRematch({ roomId: state.roomId });
-      show("lobby");
-    } catch (e) { toast(friendlyError(e), "error"); }
+  on("#btn-see-results", "click", () => show("results"));
+
+  on("#btn-rematch", "click", async () => {
+    await callRematch({ roomId: state.roomId });
+    show("lobby");
   });
-  $("#btn-new-room").addEventListener("click", async () => {
+  on("#btn-new-room", "click", async () => {
     await handleLeaveRoom(true);
     show("create");
   });
-  $("#btn-leave-results").addEventListener("click", () => handleLeaveRoom());
+  on("#btn-leave-results", "click", () => handleLeaveRoom());
+
+  on("#btn-resume-room", "click", async () => {
+    const lastRoom = loadLastRoom();
+    if (lastRoom) await enterRoom(lastRoom);
+  });
+}
+
+// "Ana Menü" — oyun sırasında/açılışta odayı TERK ETMEDEN (envanterin,
+// jetonların korunur) menüye dönmeni sağlar. Odaya "Devam Eden Pazarın Var"
+// düğmesinden ya da uygulamayı yeniden açtığında otomatik geri dönebilirsin.
+function confirmBackToMenu() {
+  const sure = window.confirm("Ana menüye dönmek istiyor musun? Pazardan tamamen ayrılmazsın, istediğinde geri dönebilirsin.");
+  if (!sure) return;
+  const roomId = state.roomId;
+  clearRoomListeners();
+  state.roomId = null;
+  saveLastRoom(roomId); // yeniden bağlanmak için sakla
+  show("home");
+  renderHomeResumeBanner();
 }
 
 function buildQuickMessages() {

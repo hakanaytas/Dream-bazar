@@ -174,6 +174,13 @@ input { font-family: inherit; }
 
 /* ---------- Ana menü ---------- */
 .home-header { display: flex; justify-content: flex-end; margin-bottom: 8px; }
+.resume-banner {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  background: linear-gradient(135deg, rgba(139,92,240,.18), rgba(212,162,76,.14));
+  border: 1px solid var(--panel-line); border-radius: var(--radius-m); padding: 14px 16px; margin-bottom: 16px;
+}
+.resume-banner strong { font-family: var(--font-display); font-size: 1.05rem; }
+.resume-banner p { margin: 2px 0 0; font-size: .8rem; color: var(--ink-dim); }
 .player-chip { display: flex; align-items: center; gap: 8px; background: var(--panel); border: 1px solid var(--panel-line); padding: 6px 14px 6px 8px; border-radius: 999px; font-size: .9rem; }
 .player-chip .chip-avatar { font-size: 1.2rem; }
 
@@ -252,7 +259,7 @@ input { font-family: inherit; }
 
 /* ---------- Oyun ekranı ---------- */
 .game-layout { display: flex; flex-direction: column; flex: 1; min-height: 0; max-width: 720px; margin: 0 auto; width: 100%; }
-.game-header { display: grid; grid-template-columns: auto 1fr auto auto; gap: 10px; align-items: center; margin-bottom: 12px; }
+.game-header { display: grid; grid-template-columns: auto auto 1fr auto auto; gap: 8px; align-items: center; margin-bottom: 12px; }
 .round-badge { display: flex; flex-direction: column; line-height: 1.1; }
 .round-eyebrow { font-size: .62rem; text-transform: uppercase; letter-spacing: .1em; color: var(--ink-faint); }
 #round-value { font-family: var(--font-display); font-weight: 700; font-size: 1.15rem; color: var(--gold-light); }

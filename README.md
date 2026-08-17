@@ -103,37 +103,55 @@ ya da proje Blaze planına geçirilmemiş.** Oyunun ekonomiyle ilgili HER
 işlemi (oyunu başlatma, satın alma, takas onaylama, tur ilerletme, hızlı
 eşleştirme) `functions/index.js`'teki sunucu fonksiyonlarını çağırıyor;
 bunlar deploy edilmeden lobi ekranındaki "Hazırım", pazar ekranındaki
-"Satın Al" gibi butonlar tıklanınca sessizce (ya da artık bir toast ile)
-başarısız olur.
+"Satın Al" gibi butonlar tıklanınca artık **ekranda kırmızı bir toast olarak
+hatayı gösteriyor** (önceden sessizce yutuyordu — bu değişti).
+
+**Önemli:** Artık `window.onerror` ve `unhandledrejection` da yakalanıp
+toast olarak gösteriliyor, yani JS tarafında ne patlarsa patlasın ekranda
+görünecek. Bir sorun yaşarsan lütfen tarayıcıda **F12 → Console**'u aç,
+kırmızı hatayı ya da ekranda çıkan toast metnini bana ilet — kesin teşhis
+için en hızlı yol bu.
 
 Kontrol listesi:
 1. Firebase Console → proje **Blaze (pay-as-you-go)** planında mı?
-2. `firebase deploy --only functions` çalıştırıldı mı? (`functions/`
-   klasöründe önce `npm install` yapılmalı.)
+2. `functions/` klasöründe `npm install` yapıldı mı, sonra
+   `firebase deploy --only functions` çalıştırıldı mı?
 3. Authentication → Sign-in method → **Anonymous** açık mı?
-4. Tarayıcı konsolunda (F12) kırmızı bir hata var mı? Artık lobi ve oyun
-   ekranındaki geri sayımlar başarısız çağrılarda ekranda toast olarak
-   hatayı gösteriyor — mesaj genelde sorunun tam olarak nerede olduğunu
-   söyler (`functions/not-found`, `permission-denied` vb.).
+4. `firebase deploy --only firestore:rules` en güncel `firestore.rules` ile
+   çalıştırıldı mı?
+5. Tarayıcı konsolunda kırmızı bir hata var mı?
 
 ### "Hızlı Katıl" ile iki kişi eşleşmiyordu — düzeltildi
 
 Önceki sürümde "Hızlı Katıl" istemci tarafında "boş oda var mı?" diye
 sorup öyle katılıyordu. İki kişi neredeyse aynı anda bastığında ikisi de
 henüz oda göremediği için **ayrı ayrı yeni oda açıyor**, hiç eşleşmiyor ve
-60 saniye sonra "yeterli oyuncu yok" diyerek kendi kendine kapanıyordu —
-"katılıyorlar ama oyun başlamıyor" hissi tam olarak buradan geliyordu.
+60 saniye sonra "yeterli oyuncu yok" diyerek kendi kendine kapanıyordu.
 
 Artık `quickJoin` tamamen `functions/index.js` içinde, tek bir Firestore
 transaction'ı içinde çalışıyor: küçük bir "kuyruk" dokümanı (`matchmaking/
 quickJoin`) üzerinden atomik olarak eşleştiriyor, bu yüzden iki oyuncu aynı
-anda bassa bile aynı odada buluşmaları garanti. Bu değişiklik `functions`
-klasörünü yeniden deploy etmeni gerektiriyor:
+anda bassa bile aynı odada buluşmaları garanti.
 
-```bash
-cd functions && npm install && cd ..
-firebase deploy --only functions
-```
+### "Ana menüye dönme" özelliği eklendi
+
+Oyun ve açılış (reveal) ekranlarının sol üstüne 🏠 **Ana Menü** butonu
+eklendi. Buna basınca odadan tamamen ayrılmıyorsun (jetonların/eşyaların
+korunur) — ana sayfada "Devam Eden Pazarın Var → Devam Et" bandı çıkar,
+istediğin an kaldığın yerden geri dönebilirsin. Uygulamayı kapatıp tekrar
+açsan bile bu bilgi tarayıcıda saklanır ve otomatik olarak kaldığın yere
+döndürür.
+
+### Genel dayanıklılık iyileştirmeleri
+
+- Tüm buton bağlamaları artık birbirinden bağımsız (`on()` yardımcı
+  fonksiyonu ile) — biri bir sebeple patlarsa diğerleri çalışmaya devam
+  eder. Önceden bir buton bağlanırken hata fırlatsaydı, ondan SONRA
+  bağlanacak tüm butonlar sessizce ölü kalıyordu.
+- Açılış ekranı artık en fazla ~9 saniye bekliyor; bağlantı kurulamazsa
+  sonsuza kadar dönen bir yükleme ekranında takılı kalmak yerine hatayı
+  gösterip devam ediyor.
+- Firebase CDN sürümü güncel stabil sürüme (`12.17.1`) yükseltildi.
 
 
 

@@ -3,12 +3,12 @@
 // oyunu başlatma) Cloud Functions üzerinden çağrılır; bu dosya sadece
 // "sosyal" verileri (isim, hazır durumu, sohbet) doğrudan Firestore'a yazar.
 
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+import { initializeApp } from "https://www.gstatic.com/firebasejs/12.17.1/firebase-app.js";
 import {
   getAuth,
   signInAnonymously,
   onAuthStateChanged,
-} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+} from "https://www.gstatic.com/firebasejs/12.17.1/firebase-auth.js";
 import {
   getFirestore,
   doc,
@@ -26,11 +26,11 @@ import {
   Timestamp,
   runTransaction,
   getDocs,
-} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+} from "https://www.gstatic.com/firebasejs/12.17.1/firebase-firestore.js";
 import {
   getFunctions,
   httpsCallable,
-} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-functions.js";
+} from "https://www.gstatic.com/firebasejs/12.17.1/firebase-functions.js";
 
 const firebaseConfig = {
   apiKey: "AIzaSyBo8d4FnKicPT-XsU5BXWreT1GBg5rhggA",

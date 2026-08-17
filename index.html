@@ -62,6 +62,15 @@
       <div class="home-header">
         <div class="player-chip" id="home-player-chip"></div>
       </div>
+
+      <div id="resume-banner" class="resume-banner" hidden>
+        <div>
+          <strong>Devam eden bir pazarın var</strong>
+          <p>Kaldığın yerden devam edebilirsin.</p>
+        </div>
+        <button class="btn btn-gold" id="btn-resume-room" style="margin:0;">Devam Et</button>
+      </div>
+
       <h2 class="section-title">Pazara nasıl gireceksin?</h2>
 
       <button class="btn btn-primary btn-block btn-large" id="btn-quick-join">
@@ -154,6 +163,7 @@
   <section class="screen" id="screen-game" data-screen="game">
     <div class="game-layout">
       <header class="game-header">
+        <button class="icon-btn" id="btn-menu-game" aria-label="Ana Menü" title="Ana Menü">🏠</button>
         <div class="round-badge">
           <span class="round-eyebrow">Tur</span>
           <span id="round-value">1 / 10</span>
@@ -212,6 +222,9 @@
   <!-- ============ AÇILIŞ (REVEAL) ============ -->
   <section class="screen" id="screen-reveal" data-screen="reveal">
     <div class="reveal-layout">
+      <div style="display:flex; justify-content:flex-start; margin-bottom:4px;">
+        <button class="icon-btn" id="btn-menu-reveal" aria-label="Ana Menü" title="Ana Menü">🏠</button>
+      </div>
       <h2 class="section-title reveal-title">Mühürler Kırılıyor…</h2>
       <div class="reveal-grid" id="reveal-grid"></div>
       <button class="btn btn-primary btn-block btn-large" id="btn-see-results" hidden>
