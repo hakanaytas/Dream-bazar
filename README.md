@@ -96,7 +96,46 @@ Dış ses dosyası kullanılmadı (telif ve boyut kaygısıyla); tüm efektler
 (`app.js` içindeki `sfx` nesnesi) Web Audio API ile anlık sentezlenir — küçük,
 hızlı yüklenir ve düşük donanımlı telefonlarda sorunsuz çalışır.
 
-## Bilinen sınırlamalar / sıradaki adımlar
+## Sorun giderme — "oyun başlamıyor" / "butonlar çalışmıyor"
+
+Bu genelde tek bir kök nedene çıkar: **Cloud Functions henüz deploy edilmemiş
+ya da proje Blaze planına geçirilmemiş.** Oyunun ekonomiyle ilgili HER
+işlemi (oyunu başlatma, satın alma, takas onaylama, tur ilerletme, hızlı
+eşleştirme) `functions/index.js`'teki sunucu fonksiyonlarını çağırıyor;
+bunlar deploy edilmeden lobi ekranındaki "Hazırım", pazar ekranındaki
+"Satın Al" gibi butonlar tıklanınca sessizce (ya da artık bir toast ile)
+başarısız olur.
+
+Kontrol listesi:
+1. Firebase Console → proje **Blaze (pay-as-you-go)** planında mı?
+2. `firebase deploy --only functions` çalıştırıldı mı? (`functions/`
+   klasöründe önce `npm install` yapılmalı.)
+3. Authentication → Sign-in method → **Anonymous** açık mı?
+4. Tarayıcı konsolunda (F12) kırmızı bir hata var mı? Artık lobi ve oyun
+   ekranındaki geri sayımlar başarısız çağrılarda ekranda toast olarak
+   hatayı gösteriyor — mesaj genelde sorunun tam olarak nerede olduğunu
+   söyler (`functions/not-found`, `permission-denied` vb.).
+
+### "Hızlı Katıl" ile iki kişi eşleşmiyordu — düzeltildi
+
+Önceki sürümde "Hızlı Katıl" istemci tarafında "boş oda var mı?" diye
+sorup öyle katılıyordu. İki kişi neredeyse aynı anda bastığında ikisi de
+henüz oda göremediği için **ayrı ayrı yeni oda açıyor**, hiç eşleşmiyor ve
+60 saniye sonra "yeterli oyuncu yok" diyerek kendi kendine kapanıyordu —
+"katılıyorlar ama oyun başlamıyor" hissi tam olarak buradan geliyordu.
+
+Artık `quickJoin` tamamen `functions/index.js` içinde, tek bir Firestore
+transaction'ı içinde çalışıyor: küçük bir "kuyruk" dokümanı (`matchmaking/
+quickJoin`) üzerinden atomik olarak eşleştiriyor, bu yüzden iki oyuncu aynı
+anda bassa bile aynı odada buluşmaları garanti. Bu değişiklik `functions`
+klasörünü yeniden deploy etmeni gerektiriyor:
+
+```bash
+cd functions && npm install && cd ..
+firebase deploy --only functions
+```
+
+
 
 - Oda kapasitesi kontrolü istemci tarafında yapılıyor; eşzamanlı katılımlarda
   nadir bir yarış durumu olabilir. Yüksek trafik beklenirse `joinRoomByCode`

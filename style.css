@@ -222,7 +222,7 @@ input { font-family: inherit; }
   padding: 12px; display: flex; flex-direction: column; align-items: center; gap: 6px; text-align: center;
   position: relative;
 }
-.player-card.is-host::before { content: "HOST"; position: absolute; top: 6px; left: 8px; font-size: .6rem; letter-spacing: .1em; color: var(--gold); }
+.player-card.is-host::before { content: "KURUCU"; position: absolute; top: 6px; left: 8px; font-size: .6rem; letter-spacing: .1em; color: var(--gold); }
 .player-card .p-avatar { font-size: 1.8rem; }
 .player-card .p-name { font-weight: 700; font-size: .92rem; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .player-card .p-status { font-size: .74rem; padding: 3px 10px; border-radius: 999px; }

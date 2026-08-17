@@ -120,6 +120,94 @@ async function requirePlayerInRoom(roomRef, uid) {
 }
 
 // ---------------------------------------------------------------------------
+// quickJoin — "Hızlı Katıl". Tamamen sunucu tarafında, TEK bir transaction
+// içinde çalışır; bu sayede iki oyuncu aynı anda "Hızlı Katıl"a basarsa bile
+// (istemci tarafında bu bir YARIŞ DURUMUNA yol açıp herkesi kendi ayrı boş
+// odasında yalnız bırakırdı) burada sıra numarası tutan tek bir "kuyruk"
+// dokümanı üzerinden atomik olarak eşleştirilirler.
+// ---------------------------------------------------------------------------
+const CODE_CHARS = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+function randomCode(len = 6) {
+  let out = "";
+  for (let i = 0; i < len; i++) out += CODE_CHARS[Math.floor(Math.random() * CODE_CHARS.length)];
+  return out;
+}
+
+exports.quickJoin = onCall(async (request) => {
+  const uid = await requireAuth(request);
+  const { name, avatar } = request.data || {};
+  if (!name || typeof name !== "string") {
+    throw new HttpsError("invalid-argument", "İsim gerekli.");
+  }
+  const safeName = name.slice(0, 16);
+  const safeAvatar = typeof avatar === "string" ? avatar : "🧙";
+  const queueRef = db.collection("matchmaking").doc("quickJoin");
+
+  const roomId = await db.runTransaction(async (tx) => {
+    const queueSnap = await tx.get(queueRef);
+    let targetRoomId = null;
+    let targetRoomRef = null;
+    let targetMax = 4;
+    let targetCount = 0;
+
+    if (queueSnap.exists && queueSnap.data().roomId) {
+      const candidateRef = db.collection("rooms").doc(queueSnap.data().roomId);
+      const candidateSnap = await tx.get(candidateRef);
+      if (candidateSnap.exists && candidateSnap.data().status === "lobby") {
+        const playersSnap = await tx.get(candidateRef.collection("players"));
+        const alreadyIn = playersSnap.docs.some((d) => d.id === uid);
+        if (alreadyIn) {
+          targetRoomId = candidateRef.id;
+          targetRoomRef = candidateRef;
+          targetMax = candidateSnap.data().maxPlayers;
+          targetCount = playersSnap.size;
+        } else if (playersSnap.size < candidateSnap.data().maxPlayers) {
+          targetRoomId = candidateRef.id;
+          targetRoomRef = candidateRef;
+          targetMax = candidateSnap.data().maxPlayers;
+          targetCount = playersSnap.size;
+        }
+      }
+    }
+
+    if (targetRoomId) {
+      const playerRef = targetRoomRef.collection("players").doc(uid);
+      const playerSnap = await tx.get(playerRef);
+      if (!playerSnap.exists) {
+        tx.set(playerRef, {
+          uid, name: safeName, avatar: safeAvatar, ready: false, connected: true,
+          isHost: false, tokens: 0, score: 0, inventory: [], joinedAt: FieldValue.serverTimestamp(),
+        });
+        targetCount += 1;
+      }
+      // Bu katılımla oda dolduysa ya da doluysa kuyruktan çıkar.
+      if (targetCount >= targetMax) {
+        tx.delete(queueRef);
+      }
+      return targetRoomId;
+    }
+
+    // Uygun açık oda yok — yeni bir tane aç ve kuyruğa koy.
+    const code = randomCode();
+    const newRoomRef = db.collection("rooms").doc(code);
+    tx.set(newRoomRef, {
+      code, hostUid: uid, maxPlayers: 4, status: "lobby", round: 0, quickStart: false,
+      createdAt: FieldValue.serverTimestamp(), updatedAt: FieldValue.serverTimestamp(),
+      countdownEndsAt: admin.firestore.Timestamp.fromMillis(Date.now() + 60 * 1000),
+      roundEndsAt: null, winnerUid: null,
+    });
+    tx.set(newRoomRef.collection("players").doc(uid), {
+      uid, name: safeName, avatar: safeAvatar, ready: true, connected: true,
+      isHost: true, tokens: 0, score: 0, inventory: [], joinedAt: FieldValue.serverTimestamp(),
+    });
+    tx.set(queueRef, { roomId: code, updatedAt: FieldValue.serverTimestamp() });
+    return code;
+  });
+
+  return { roomId };
+});
+
+// ---------------------------------------------------------------------------
 // requestStart — Lobiden oyunu başlatır (1. turu üretir).
 // Herhangi bir istemci çağırabilir (host'un "Hızlı Başlat"ı ya da geri sayım
 // bittiğinde herhangi bir istemci), fakat sunucu şu koşulları KENDİSİ doğrular:

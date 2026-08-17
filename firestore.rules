@@ -32,6 +32,12 @@ function isHost(roomId) {
 service cloud.firestore {
   match /databases/{database}/documents {
 
+    // Hızlı Katıl kuyruğu — sadece Cloud Functions (Admin SDK) tarafından
+    // atomik olarak yönetilir; istemciler asla dokunamaz.
+    match /matchmaking/{docId} {
+      allow read, write: if false;
+    }
+
     match /rooms/{roomId} {
       // Herkes lobi bilgisini (kod ile) okuyabilir; ekonomi alanları burada yok.
       allow read: if isSignedIn();

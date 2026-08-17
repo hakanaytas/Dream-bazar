@@ -165,20 +165,8 @@ async function getDocsCompat(colRef) {
 }
 
 export async function quickJoin({ name, avatar }) {
-  const roomsCol = collection(db, "rooms");
-  // "Hızlı Katıl": lobide, dolu olmayan en yakın zamanda açılmış odayı bul.
-  const q = query(roomsCol, orderBy("createdAt", "desc"), limit(25));
-  const snap = await getDocs(q);
-  for (const docSnap of snap.docs) {
-    const room = docSnap.data();
-    if (room.status !== "lobby") continue;
-    const players = await getDocsCompat(collection(db, "rooms", docSnap.id, "players"));
-    if (players.length < room.maxPlayers) {
-      return joinRoomByCode(docSnap.id, { name, avatar });
-    }
-  }
-  // Uygun oda yoksa yeni bir tane aç (4 kişilik varsayılan).
-  return createRoom({ name, avatar, maxPlayers: 4 });
+  const result = await callQuickJoin({ name, avatar });
+  return result.data.roomId;
 }
 
 export async function leaveRoom(roomId) {
@@ -280,6 +268,7 @@ export async function cancelTrade(roomId, tradeId) {
 // Sunucu tarafı çağrılar (Cloud Functions)
 // ---------------------------------------------------------------------------
 export const callRequestStart = httpsCallable(functions, "requestStart");
+export const callQuickJoin = httpsCallable(functions, "quickJoin");
 export const callAdvanceRound = httpsCallable(functions, "advanceRound");
 export const callBuyItem = httpsCallable(functions, "buyItem");
 export const callRespondTrade = httpsCallable(functions, "respondTrade");

@@ -440,21 +440,33 @@ function renderLobbyCountdown(room) {
   clearInterval(state.countdownTimer);
   const circle = $("#countdown-ring svg circle");
   const totalMs = 60 * 1000;
+  let attempting = false;
+  let lastAttempt = 0;
   const tick = async () => {
     const remaining = Math.max(0, room.countdownEndsAt.toMillis() - Date.now());
     const secs = Math.ceil(remaining / 1000);
     $("#countdown-text").textContent = secs;
     const frac = Math.max(0, Math.min(1, remaining / totalMs));
     circle.style.strokeDashoffset = String(213.6 * (1 - frac));
-    if (remaining <= 0) {
-      clearInterval(state.countdownTimer);
+
+    if (remaining <= 0 && !attempting && Date.now() - lastAttempt > 3000) {
+      attempting = true;
+      lastAttempt = Date.now();
       try {
         await callRequestStart({ roomId: state.roomId });
+        // Başarılıysa oda durumu 'active' olacak ve onRoomUpdate ekranı değiştirecek.
       } catch (e) {
         if (state.players.length < 2) {
+          clearInterval(state.countdownTimer);
           $("#lobby-status-text").textContent = "Yeterli oyuncu yok — pazar kapanıyor…";
           setTimeout(() => handleLeaveRoom(), 2200);
+        } else {
+          // Yeterli oyuncu var ama başlatma başarısız oldu — birkaç saniye
+          // sonra otomatik tekrar denenir, kullanıcıya da bilgi verilir.
+          toast("Oyun başlatılamadı, tekrar deneniyor: " + friendlyError(e), "error");
         }
+      } finally {
+        attempting = false;
       }
     }
   };
@@ -471,15 +483,29 @@ function renderRoundHeader(room) {
 
   clearInterval(state.roundTimer);
   const totalMs = 90 * 1000;
+  let roundAttempting = false;
+  let roundLastAttempt = 0;
+  let roundErrorShown = false;
   const tick = async () => {
     if (!room.roundEndsAt) return;
     const remaining = Math.max(0, room.roundEndsAt.toMillis() - Date.now());
     const secs = Math.ceil(remaining / 1000);
     $("#timer-text").textContent = secs;
     $("#timer-bar-fill").style.width = `${Math.max(0, Math.min(100, (remaining / totalMs) * 100))}%`;
-    if (remaining <= 0) {
-      clearInterval(state.roundTimer);
-      try { await callAdvanceRound({ roomId: state.roomId }); sfx.round(); } catch { /* başka biri hallettti */ }
+    if (remaining <= 0 && !roundAttempting && Date.now() - roundLastAttempt > 3000) {
+      roundAttempting = true;
+      roundLastAttempt = Date.now();
+      try {
+        await callAdvanceRound({ roomId: state.roomId });
+        sfx.round();
+      } catch (e) {
+        if (!roundErrorShown) {
+          roundErrorShown = true;
+          toast("Tur ilerletilemedi, tekrar deneniyor: " + friendlyError(e), "error");
+        }
+      } finally {
+        roundAttempting = false;
+      }
     }
   };
   tick();
